@@ -65,8 +65,8 @@ const CSS = `
 /* album */
 .album-wrap{position:absolute;inset:0;-webkit-perspective:2600px;perspective:2600px;perspective-origin:50% 42%}
 .album{position:absolute;left:50%;top:50%;width:570px;height:900px;margin-left:-285px;margin-top:-450px;-webkit-transform-style:preserve-3d;transform-style:preserve-3d;will-change:transform}
-/* clip-path instead of overflow:hidden so backface-visibility works on iOS Safari */
-.face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;clip-path:inset(0 round 6px 10px 10px 6px)}
+/* border-radius only — no overflow:hidden (breaks iOS backface-visibility) and no clip-path (flattens 3D on Android Chrome) */
+.face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;border-radius:6px 10px 10px 6px}
 .body{position:absolute;inset:0;border-radius:6px 10px 10px 6px;background:linear-gradient(90deg,#DCD1C0 0 10px,#EFE8db 10px 100%);box-shadow:inset 0 0 0 1px rgba(120,105,84,.25)}
 .body::after{content:"";position:absolute;top:6px;bottom:6px;right:0;width:15px;border-radius:0 8px 8px 0;background:repeating-linear-gradient(90deg,#f0e8da,#f0e8da 1px,#e2d8c6 1px,#e2d8c6 3px)}
 /* padded ivory fabric hardcover */
@@ -81,7 +81,6 @@ const CSS = `
 .cover .frame{position:absolute;inset:34px;border:1px solid rgba(184,148,90,.32);border-radius:3px;z-index:2}
 .cover .frame::before{content:"";position:absolute;inset:6px;border:1px solid rgba(184,148,90,.16)}
 .front-cover{transform-origin:left center;-webkit-backface-visibility:hidden;backface-visibility:hidden;will-change:transform;z-index:5}
-.cover .frame{display:none}
 .emboss{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
 .emboss .ff-title{font-family:"Playfair Display",Georgia,serif;font-weight:500;color:var(--gold);font-size:30px;letter-spacing:.34em;padding-left:.34em;text-transform:uppercase;line-height:1;
   text-shadow:0 1px 0 rgba(255,255,255,.55), 0 -1px 1px rgba(90,64,10,.22)}
@@ -136,6 +135,7 @@ const CSS = `
 .std-date{font-family:"Playfair Display",Georgia,serif;font-weight:500;color:var(--gold);font-size:132px;letter-spacing:.03em;line-height:.9;will-change:opacity,transform}
 .std-place{font-family:"Raleway",sans-serif;font-weight:300;font-size:26px;letter-spacing:.5em;color:var(--stone);padding-left:.5em;margin-top:32px;will-change:opacity,transform}
 .std-sprig{margin-top:24px;color:var(--gold);will-change:opacity}
+.std-rsvp{margin-top:28px;font-family:"Raleway",sans-serif;font-weight:300;font-size:13px;letter-spacing:.38em;padding-left:.38em;color:var(--stone);opacity:.75;will-change:opacity}
 
 /* finishing */
 .grade{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;
@@ -315,8 +315,6 @@ export default function App() {
   const [entered, setEntered] = useState(DEV || SEEK != null);
   const [playing, setPlaying] = useState(DEV && SEEK == null);
   const [ended, setEnded] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const audioRef = useRef(null);
 
   // refs for imperative per-frame updates
   const R = {
@@ -324,6 +322,7 @@ export default function App() {
     front: useRef(null), spread: useRef(null), candle: useRef(null),
     leafA: useRef(null), leafB: useRef(null), shadeA: useRef(null), shadeB: useRef(null),
     lbl: useRef(null), rule: useRef(null), date: useRef(null), place: useRef(null), sprig: useRef(null),
+    rsvp: useRef(null),
     scrub: useRef(null), time: useRef(null),
   };
   const timeRef = useRef(SEEK ?? 0);
@@ -347,7 +346,7 @@ export default function App() {
     else cover = 0;
     if (R.front.current) R.front.current.style.transform = `translateZ(14px) rotateY(${cover}deg)`;
 
-    const spreadOp = clamp(phase(t, 3.2, 4.4) - phase(t, 13.2, 14.1), 0, 1);
+    const spreadOp = clamp(phase(t, 3.2, 4.4) - phase(t, 13.2, 14.5), 0, 1);
     if (R.spread.current) { R.spread.current.style.opacity = spreadOp; }
 
     // leaf A: Photo 1 -> transitional (flip 1)
@@ -371,15 +370,16 @@ export default function App() {
       ref.current.style.opacity = p;
       ref.current.style.transform = `translateY(${lerp(rise, 0, p)}px)`;
     };
-    rev(R.lbl, 15.6, 16.3, 14);
-    rev(R.rule, 15.9, 16.6, 10);
+    rev(R.lbl, 16.2, 16.9, 14);
+    rev(R.rule, 16.5, 17.1, 10);
     if (R.date.current) {
-      const dp = easeInOut(phase(t, 16.3, 17.5));
+      const dp = easeInOut(phase(t, 16.8, 17.8));
       R.date.current.style.opacity = dp;
       R.date.current.style.transform = `translateY(${lerp(18,0,dp)}px) scale(${lerp(.94,1,dp)})`;
     }
-    rev(R.place, 17.1, 17.9, 12);
-    if (R.sprig.current) R.sprig.current.style.opacity = easeInOut(phase(t, 17.6, 18.3)) * 0.6;
+    rev(R.place, 17.4, 18.0, 12);
+    if (R.sprig.current) R.sprig.current.style.opacity = easeInOut(phase(t, 17.8, 18.5)) * 0.6;
+    if (R.rsvp.current) R.rsvp.current.style.opacity = easeInOut(phase(t, 18.1, 18.7));
 
     if (R.scrub.current) R.scrub.current.value = t;
     if (R.time.current) R.time.current.textContent = `${t.toFixed(1)} / ${DURATION.toFixed(1)}s`;
@@ -390,7 +390,7 @@ export default function App() {
     let raf, last = null;
     const loop = (ts) => {
       if (last == null) last = ts;
-      const dt = (ts - last) / 1000; last = ts;
+      const dt = Math.min((ts - last) / 1000, 0.05); last = ts;
       if (playingRef.current) {
         let t = timeRef.current + dt;
         if (t >= DURATION) { t = DURATION; setPlaying(false); setEnded(true); }
@@ -426,36 +426,12 @@ export default function App() {
   };
   const replay = () => { timeRef.current = 0; setEnded(false); setPlaying(true); };
 
-  // fade the ambient track in/out for a soft start and finish
-  const fadeAudio = (to, ms = 1400) => {
-    const a = audioRef.current;
-    if (!a) return;
-    const from = a.volume, steps = 24, step = (to - from) / steps;
-    let i = 0;
-    const id = setInterval(() => {
-      i += 1;
-      a.volume = Math.max(0, Math.min(1, from + step * i));
-      if (i >= steps) clearInterval(id);
-    }, ms / steps);
-  };
-
   const beginExperience = () => {
+    if (entered) return;
     timeRef.current = 0;
     setEnded(false);
     setEntered(true);
     setPlaying(true);
-  };
-
-  const toggleMute = () => {
-    setMuted((m) => {
-      const next = !m;
-      const a = audioRef.current;
-      if (a) {
-        a.muted = next;
-        if (!next && a.paused) a.play().catch(() => {});
-      }
-      return next;
-    });
   };
   const onScrub = (e) => { setPlaying(false); timeRef.current = parseFloat(e.target.value); render(timeRef.current); };
   const upd = (k) => (e) => setCfg((c) => ({ ...c, [k]: e.target.value }));
@@ -565,6 +541,7 @@ export default function App() {
                       <ellipse cx="50" cy="100" rx="32" ry="8" fill="currentColor" opacity="0.55"/>
                       <path d="M18 100 Q50 93 82 100" stroke="currentColor" strokeWidth="1.2" fill="none" opacity="0.35"/>
                     </svg>
+                    <div className="std-rsvp" ref={R.rsvp} style={{ opacity: 0 }}>RSVPs to follow</div>
                   </div>
                 </div>
 
@@ -626,7 +603,7 @@ export default function App() {
         <div className="mono">Our Forever</div>
         <div className="inv">AN INVITATION</div>
         <div className="sub">Anguilla · 27 July 2027</div>
-        <button className="open" onClick={beginExperience}>Open the Invitation</button>
+        <button className="open" onClick={beginExperience}>Open</button>
       </div>
 
       {/* gentle replay once the film has finished */}
