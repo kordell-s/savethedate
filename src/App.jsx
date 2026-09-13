@@ -190,8 +190,7 @@ const CSS = `
   background:radial-gradient(50% 60% at 50% 40%, rgba(242,185,104,.28), transparent 70%);filter:blur(10px)}
 .enter .mono{position:relative;font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;
   font-size:104px;line-height:1.05;color:#f4ede1;margin:0 0 6px;text-shadow:0 2px 36px rgba(242,185,104,.30);padding-bottom:.06em}
-.enter .inv{position:relative;font-family:"Raleway",sans-serif;font-weight:300;font-size:14px;letter-spacing:.52em;
-  padding-left:.52em;color:#c7b9a4;margin:22px 0 6px}
+
 .enter .sub{position:relative;font-family:"Playfair Display",Georgia,serif;font-size:26px;letter-spacing:.04em;color:#a2937f;margin-bottom:44px}
 .enter .open{position:relative;font-family:"Raleway",sans-serif;font-weight:300;font-size:13px;letter-spacing:.34em;padding-left:.34em;
   color:#f4ede1;background:transparent;border:1px solid rgba(214,180,120,.5);border-radius:999px;padding:17px 42px;cursor:pointer;
@@ -315,6 +314,8 @@ export default function App() {
   const [entered, setEntered] = useState(DEV || SEEK != null);
   const [playing, setPlaying] = useState(DEV && SEEK == null);
   const [ended, setEnded] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const audioRef = useRef(null);
 
   // refs for imperative per-frame updates
   const R = {
@@ -420,11 +421,33 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ramp the track volume; optionally pause when it reaches silence
+  const fadeAudio = (to, ms = 1400, thenPause = false) => {
+    const a = audioRef.current;
+    if (!a) return;
+    const from = a.volume, steps = 24, step = (to - from) / steps;
+    let i = 0;
+    clearInterval(a._fade);
+    a._fade = setInterval(() => {
+      i += 1;
+      a.volume = Math.max(0, Math.min(1, from + step * i));
+      if (i >= steps) { clearInterval(a._fade); if (thenPause) a.pause(); }
+    }, ms / steps);
+  };
+  const startAudio = () => {
+    const a = audioRef.current;
+    if (!a || muted) return;
+    clearInterval(a._fade);
+    a.currentTime = 0;
+    a.volume = 0;
+    a.play().then(() => fadeAudio(0.6, 1200)).catch(() => {});
+  };
+
   const togglePlay = () => {
     if (timeRef.current >= DURATION) { timeRef.current = 0; }
     setPlaying((p) => !p);
   };
-  const replay = () => { timeRef.current = 0; setEnded(false); setPlaying(true); };
+  const replay = () => { timeRef.current = 0; setEnded(false); setPlaying(true); startAudio(); };
 
   const beginExperience = () => {
     if (entered) return;
@@ -432,6 +455,25 @@ export default function App() {
     setEnded(false);
     setEntered(true);
     setPlaying(true);
+    startAudio();
+  };
+
+  // music ends with the presentation: fade out and stop when the film finishes
+  useEffect(() => {
+    if (ended) fadeAudio(0, 1500, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ended]);
+
+  const toggleMute = () => {
+    setMuted((m) => {
+      const next = !m;
+      const a = audioRef.current;
+      if (a) {
+        a.muted = next;
+        if (!next && a.paused && !ended) { a.play().catch(() => {}); }
+      }
+      return next;
+    });
   };
   const onScrub = (e) => { setPlaying(false); timeRef.current = parseFloat(e.target.value); render(timeRef.current); };
   const upd = (k) => (e) => setCfg((c) => ({ ...c, [k]: e.target.value }));
@@ -594,17 +636,23 @@ export default function App() {
         </div>
       </div>
 
-      {/* ambient track — swap src when music is chosen; currently disabled */}
-      {/* <audio ref={audioRef} src="/audio/ambient.mp3" loop preload="auto" playsInline /> */}
+      {/* soundtrack — starts on Open, fades out with the presentation (no loop) */}
+      <audio ref={audioRef} src="/audio/ambient.mp3" preload="auto" playsInline />
 
-      {/* enter screen — first tap starts the film */}
+      {/* enter screen — first tap starts the film + music */}
       <div className={"enter" + (entered ? " hide" : "")} aria-hidden={entered}>
         <div className="enter-glow" />
         <div className="mono">Our Forever</div>
-        <div className="inv">AN INVITATION</div>
         <div className="sub">Anguilla · 27 July 2027</div>
         <button className="open" onClick={beginExperience}>Open</button>
       </div>
+
+      {/* discreet sound toggle, once inside */}
+      {entered && !ended && (
+        <button className="chrome-btn mute" onClick={toggleMute} aria-pressed={muted}>
+          {muted ? "Sound off" : "Sound on"}
+        </button>
+      )}
 
       {/* gentle replay once the film has finished */}
       <button
