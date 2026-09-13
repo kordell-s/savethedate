@@ -57,15 +57,16 @@ const CSS = `
 .bd .bd-photo{position:absolute;inset:0;background-size:cover;background-position:center;filter:saturate(.94) brightness(1.02)}
 
 .bokeh{position:absolute;border-radius:50%;filter:blur(16px);mix-blend-mode:screen}
-.candle{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;will-change:opacity;
+.candle{position:absolute;inset:0;pointer-events:none;will-change:opacity;
   background:
-    radial-gradient(30% 20% at 50% 55%, rgba(255,214,150,.75), transparent 60%),
-    radial-gradient(52% 40% at 50% 46%, rgba(242,175,96,.34), transparent 72%)}
+    radial-gradient(30% 20% at 50% 55%, rgba(255,214,150,.32), transparent 60%),
+    radial-gradient(52% 40% at 50% 46%, rgba(242,175,96,.15), transparent 72%)}
 
 /* album */
-.album-wrap{position:absolute;inset:0;perspective:2600px;perspective-origin:50% 42%}
-.album{position:absolute;left:50%;top:50%;width:570px;height:900px;margin-left:-285px;margin-top:-450px;transform-style:preserve-3d;will-change:transform}
-.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:6px 10px 10px 6px;overflow:hidden}
+.album-wrap{position:absolute;inset:0;-webkit-perspective:2600px;perspective:2600px;perspective-origin:50% 42%}
+.album{position:absolute;left:50%;top:50%;width:570px;height:900px;margin-left:-285px;margin-top:-450px;-webkit-transform-style:preserve-3d;transform-style:preserve-3d;will-change:transform}
+/* clip-path instead of overflow:hidden so backface-visibility works on iOS Safari */
+.face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;clip-path:inset(0 round 6px 10px 10px 6px)}
 .body{position:absolute;inset:0;border-radius:6px 10px 10px 6px;background:linear-gradient(90deg,#DCD1C0 0 10px,#EFE8db 10px 100%);box-shadow:inset 0 0 0 1px rgba(120,105,84,.25)}
 .body::after{content:"";position:absolute;top:6px;bottom:6px;right:0;width:15px;border-radius:0 8px 8px 0;background:repeating-linear-gradient(90deg,#f0e8da,#f0e8da 1px,#e2d8c6 1px,#e2d8c6 3px)}
 /* padded ivory fabric hardcover */
@@ -79,7 +80,7 @@ const CSS = `
   box-shadow:inset 0 1px 2px rgba(255,255,255,.5), inset 0 0 0 1px rgba(150,128,92,.12)}
 .cover .frame{position:absolute;inset:34px;border:1px solid rgba(184,148,90,.32);border-radius:3px;z-index:2}
 .cover .frame::before{content:"";position:absolute;inset:6px;border:1px solid rgba(184,148,90,.16)}
-.front-cover{transform-origin:left center;will-change:transform;z-index:5}
+.front-cover{transform-origin:left center;-webkit-backface-visibility:hidden;backface-visibility:hidden;will-change:transform;z-index:5}
 .cover .frame{display:none}
 .emboss{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
 .emboss .ff-title{font-family:"Playfair Display",Georgia,serif;font-weight:500;color:var(--gold);font-size:30px;letter-spacing:.34em;padding-left:.34em;text-transform:uppercase;line-height:1;
@@ -114,11 +115,11 @@ const CSS = `
 .palm-detail{color:var(--stone);opacity:.5}
 
 /* flipping leaves */
-.leaf{position:absolute;left:490px;top:0;width:490px;height:900px;transform-origin:left center;transform-style:preserve-3d;will-change:transform}
-.leaf .f{position:absolute;inset:0;backface-visibility:hidden;background:var(--paper);
+.leaf{position:absolute;left:490px;top:0;width:490px;height:900px;transform-origin:left center;-webkit-transform-style:preserve-3d;transform-style:preserve-3d;will-change:transform}
+.leaf .f{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;background:var(--paper);
   background-image:repeating-linear-gradient(92deg, rgba(150,132,104,.045) 0 2px, transparent 2px 5px)}
 .leaf .f.front{box-shadow:inset 8px 0 24px rgba(120,105,84,.18)}
-.leaf .f.back{transform:rotateY(180deg);box-shadow:inset -8px 0 24px rgba(120,105,84,.18)}
+.leaf .f.back{-webkit-transform:rotateY(180deg);transform:rotateY(180deg);box-shadow:inset -8px 0 24px rgba(120,105,84,.18)}
 .leaf .shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(60,44,28,.24),transparent 42%);opacity:0}
 
 /* back cover: SAVE THE DATE */
