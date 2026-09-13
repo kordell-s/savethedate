@@ -486,9 +486,11 @@ export default function App() {
     startAudio();
   };
 
-  // music ends with the presentation: fade out and stop when the film finishes
+  // let the music linger ~3s on the end screen, then fade out and stop
   useEffect(() => {
-    if (ended) fadeAudio(0, 1500, true);
+    if (!ended) return;
+    const id = setTimeout(() => fadeAudio(0, 1500, true), 3000);
+    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ended]);
 
@@ -671,7 +673,7 @@ export default function App() {
       <div className={"enter" + (entered ? " hide" : "")} aria-hidden={entered}>
         <div className="enter-glow" />
         <div className="mono">Our Forever</div>
-        <div className="sub">Anguilla · 27 July 2027</div>
+        <div className="sub">Anguilla</div>
         <button className="open" onClick={beginExperience}>Open</button>
       </div>
 
