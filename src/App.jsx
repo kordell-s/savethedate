@@ -673,7 +673,6 @@ export default function App() {
       <div className={"enter" + (entered ? " hide" : "")} aria-hidden={entered}>
         <div className="enter-glow" />
         <div className="mono">Our Forever</div>
-        <div className="sub">Anguilla</div>
         <button className="open" onClick={beginExperience}>Open</button>
       </div>
 
