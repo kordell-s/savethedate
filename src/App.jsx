@@ -153,6 +153,11 @@ const CSS = `
 .controls button:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
 .scrub{flex:1;accent-color:var(--gold);cursor:pointer}
 .timelbl{font-variant-numeric:tabular-nums;font-size:12px;color:#9a9086;min-width:88px;text-align:right;letter-spacing:.05em}
+@media(max-width:480px){
+  .controls{gap:8px;padding:10px 12px}
+  .controls button{font-size:11px;padding:7px 12px}
+  .scrub{min-width:0}
+  .timelbl{min-width:66px;font-size:10px}}
 
 .atoggle{position:absolute;top:14px;right:14px;z-index:19;font-family:"Raleway",sans-serif;font-size:12px;letter-spacing:.12em;color:#eee;background:rgba(42,37,33,.85);border:1px solid #3a332d;border-radius:999px;padding:8px 16px;cursor:pointer}
 .panel{position:absolute;top:14px;right:14px;width:274px;background:rgba(20,18,16,.94);border:1px solid #322c26;border-radius:12px;padding:14px;backdrop-filter:blur(6px);z-index:20}
@@ -183,29 +188,38 @@ const CSS = `
 
 /* enter screen + guest chrome */
 .enter{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:radial-gradient(120% 90% at 50% 38%, #17120f 0%, #0a0908 72%);color:#efe7da;text-align:center;padding:40px;
+  background:radial-gradient(120% 90% at 50% 38%, #17120f 0%, #0a0908 72%);color:#efe7da;text-align:center;
+  padding:clamp(20px,5vmin,40px);
   transition:opacity 1.3s ease;overflow:hidden}
 .enter.hide{opacity:0;pointer-events:none}
 .enter .enter-glow{position:absolute;width:120%;height:60%;top:8%;left:-10%;pointer-events:none;opacity:.5;
   background:radial-gradient(50% 60% at 50% 40%, rgba(242,185,104,.28), transparent 70%);filter:blur(10px)}
 .enter .mono{position:relative;font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;
-  font-size:104px;line-height:1.05;color:#f4ede1;margin:0 0 6px;text-shadow:0 2px 36px rgba(242,185,104,.30);padding-bottom:.06em}
+  font-size:clamp(44px,14vmin,108px);line-height:1.05;color:#f4ede1;margin:0 0 6px;text-shadow:0 2px 36px rgba(242,185,104,.30);padding-bottom:.06em}
 
-.enter .sub{position:relative;font-family:"Playfair Display",Georgia,serif;font-size:26px;letter-spacing:.04em;color:#a2937f;margin-bottom:44px}
-.enter .open{position:relative;font-family:"Raleway",sans-serif;font-weight:300;font-size:13px;letter-spacing:.34em;padding-left:.34em;
-  color:#f4ede1;background:transparent;border:1px solid rgba(214,180,120,.5);border-radius:999px;padding:17px 42px;cursor:pointer;
+.enter .sub{position:relative;font-family:"Playfair Display",Georgia,serif;font-size:clamp(16px,3.5vmin,26px);letter-spacing:.04em;color:#a2937f;margin-bottom:clamp(24px,6vmin,48px)}
+.enter .open{position:relative;font-family:"Raleway",sans-serif;font-weight:300;font-size:clamp(12px,2.2vmin,15px);letter-spacing:.34em;
+  color:#f4ede1;background:transparent;border:1px solid rgba(214,180,120,.5);border-radius:999px;
+  padding:clamp(13px,2.6vmin,18px) clamp(28px,7vmin,52px);cursor:pointer;touch-action:manipulation;
+  min-height:48px;min-width:130px;display:inline-flex;align-items:center;justify-content:center;
   transition:background .4s ease,border-color .4s ease,transform .2s ease}
 .enter .open:hover{background:rgba(214,180,120,.12);border-color:rgba(214,180,120,.92)}
 .enter .open:active{transform:scale(.975)}
 .enter .open:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+@media(max-height:480px){
+  .enter .mono{font-size:clamp(28px,9vh,52px)}
+  .enter .sub{font-size:clamp(13px,3vh,18px);margin-bottom:clamp(10px,2.5vh,18px)}
+  .enter .open{padding:8px clamp(22px,5vw,40px);min-height:40px}}
 
 .chrome-btn{position:absolute;z-index:30;font-family:"Raleway",sans-serif;font-weight:300;font-size:12px;letter-spacing:.16em;
-  padding-left:.16em;color:#efe7da;background:rgba(20,16,14,.46);border:1px solid rgba(214,180,120,.32);border-radius:999px;
-  padding:10px 17px;cursor:pointer;backdrop-filter:blur(7px);transition:background .3s ease,border-color .3s ease,opacity .8s ease}
+  color:#efe7da;background:rgba(20,16,14,.46);border:1px solid rgba(214,180,120,.32);border-radius:999px;
+  padding:10px 18px;cursor:pointer;touch-action:manipulation;backdrop-filter:blur(7px);
+  min-height:44px;display:inline-flex;align-items:center;justify-content:center;
+  transition:background .3s ease,border-color .3s ease,opacity .8s ease}
 .chrome-btn:hover{background:rgba(44,35,28,.7);border-color:rgba(214,180,120,.7)}
 .chrome-btn:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
-.mute{top:18px;right:18px}
-.replay-end{left:50%;bottom:56px;transform:translateX(-50%);opacity:0;pointer-events:none}
+.mute{top:calc(12px + env(safe-area-inset-top,0px));right:18px}
+.replay-end{left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);opacity:0;pointer-events:none}
 .replay-end.show{opacity:1;pointer-events:auto}
 `;
 
@@ -440,7 +454,7 @@ export default function App() {
     clearInterval(a._fade);
     a.currentTime = 0;
     a.volume = 0;
-    a.play().then(() => fadeAudio(0.6, 1200)).catch(() => {});
+    try { const p = a.play(); if (p !== undefined) p.then(() => fadeAudio(0.6, 1200)).catch(() => {}); } catch (_) {}
   };
 
   const togglePlay = () => {
@@ -470,7 +484,7 @@ export default function App() {
       const a = audioRef.current;
       if (a) {
         a.muted = next;
-        if (!next && a.paused && !ended) { a.play().catch(() => {}); }
+        if (!next && a.paused && !ended) { try { const p = a.play(); if (p) p.catch(() => {}); } catch (_) {} }
       }
       return next;
     });
@@ -637,7 +651,7 @@ export default function App() {
       </div>
 
       {/* soundtrack — starts on Open, fades out with the presentation (no loop) */}
-      <audio ref={audioRef} src="/audio/ambient.mp3" preload="auto" playsInline />
+      <audio ref={audioRef} src="/audio/way-you-look-tonight.mp3" preload="auto" playsInline />
 
       {/* enter screen — first tap starts the film + music */}
       <div className={"enter" + (entered ? " hide" : "")} aria-hidden={entered}>
