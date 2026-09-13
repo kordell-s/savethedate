@@ -186,6 +186,20 @@ const CSS = `
   .floral{animation:none;transform:rotate(var(--rot,0deg))}
 }
 
+/* mobile: collapse GPU compositing layers — prevents WebKit OOM crash on iOS Safari.
+   Keeps the 3D album animation; strips decorative layers (floral drift, bokeh, grain). */
+@media (hover:none) and (pointer:coarse){
+  .floral{will-change:auto;animation:none;filter:none}
+  .floral img,.floral.bloom img{filter:drop-shadow(0 6px 14px rgba(70,26,30,.26))}
+  .floral.soft img{filter:drop-shadow(0 5px 12px rgba(90,40,50,.20))}
+  .bokeh{display:none}
+  .grain{display:none}
+  .bd::after{display:none}
+  .candle{will-change:auto}
+  .spread{will-change:auto}
+  .std-lbl,.std-rule,.std-date,.std-place,.std-sprig,.std-rsvp{will-change:auto}
+}
+
 /* enter screen + guest chrome */
 .enter{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;
   background:radial-gradient(120% 90% at 50% 38%, #17120f 0%, #0a0908 72%);color:#efe7da;text-align:center;
