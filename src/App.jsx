@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { DURATION, AUDIO_VOLUME, AUDIO_FADE_IN, AUDIO_HOLD, AUDIO_FADE_OUT, getTimelineStyles, floralTransform } from "./timeline.js";
 
 /* ================================================================
    Save the Date — cinematic wedding-album reveal
@@ -7,22 +8,6 @@ import { useState, useRef, useEffect } from "react";
    the HTML prototype: two page-turns, full interior content, warm
    procedural marble/paper/candlelight, cinematic grade.
    ================================================================ */
-
-const DURATION = 18.8;
-
-/* ---- timeline helpers ---- */
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const lerp = (a, b, t) => a + (b - a) * t;
-const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const phase = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
-function keyed(t, pts) {
-  if (t <= pts[0][0]) return pts[0][1];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [ta, va] = pts[i], [tb, vb] = pts[i + 1];
-    if (t <= tb) return lerp(va, vb, easeInOut(phase(t, ta, tb)));
-  }
-  return pts[pts.length - 1][1];
-}
 
 const CSS = `
 :root{
@@ -130,12 +115,12 @@ const CSS = `
 .palm{position:absolute;pointer-events:none;opacity:.06;color:#3a2f22}
 .palm.tl{top:-30px;left:-60px;transform:rotate(18deg) scale(1.1)}
 .palm.br{bottom:-40px;right:-70px;transform:rotate(200deg) scale(1.15)}
-.std-lbl{font-family:"Raleway",sans-serif;font-weight:300;font-size:19px;letter-spacing:.48em;color:var(--stone);padding-left:.48em;white-space:nowrap;will-change:opacity,transform}
+.std-lbl{font-family:"Raleway",sans-serif;font-weight:300;font-size:28px;letter-spacing:.48em;color:var(--stone);padding-left:.48em;white-space:nowrap;will-change:opacity,transform}
 .std-rule{display:flex;align-items:center;justify-content:center;color:var(--gold);margin:22px 0;will-change:opacity,transform}
 .std-date{font-family:"Playfair Display",Georgia,serif;font-weight:500;color:var(--gold);font-size:132px;letter-spacing:.03em;line-height:.9;will-change:opacity,transform}
-.std-place{font-family:"Raleway",sans-serif;font-weight:300;font-size:26px;letter-spacing:.5em;color:var(--stone);padding-left:.5em;margin-top:32px;will-change:opacity,transform}
+.std-place{font-family:"Raleway",sans-serif;font-weight:300;font-size:34px;letter-spacing:.5em;color:var(--stone);padding-left:.5em;margin-top:32px;will-change:opacity,transform}
 .std-sprig{margin-top:24px;color:var(--gold);will-change:opacity}
-.std-rsvp{margin-top:28px;font-family:"Raleway",sans-serif;font-weight:300;font-size:13px;letter-spacing:.38em;padding-left:.38em;color:var(--stone);opacity:.75;will-change:opacity}
+.std-rsvp{margin-top:28px;font-family:"Raleway",sans-serif;font-weight:300;font-size:24px;letter-spacing:.38em;padding-left:.38em;color:var(--stone);opacity:.75;will-change:opacity}
 
 /* finishing */
 .grade{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;
@@ -286,7 +271,9 @@ const FLORALS = [
   { src: PETALS[1], kind: "petal", w: 64,  pos: { top: 470, right: 70 },     rot: 34,  blur: 0.9, op: 0.82, dy: -7, drot: -6, drift: 11.8, delay: 1.0 },
 ];
 
-function FloralPhoto({ item }) {
+const identityAsset = (path) => path;
+
+function FloralPhoto({ item, videoTime, resolveAsset }) {
   const s = {
     ...item.pos,
     width: item.w,
@@ -298,11 +285,12 @@ function FloralPhoto({ item }) {
     "--drot": `${item.drot ?? 1.5}deg`,
     "--drift": `${item.drift ?? 11}s`,
     "--delay": `${item.delay ?? 0}s`,
-    transform: `rotate(${item.rot || 0}deg)`,
+    transform: videoTime == null ? `rotate(${item.rot || 0}deg)` : floralTransform(item, videoTime),
+    ...(videoTime == null ? {} : { animation: "none" }),
   };
   return (
     <div className={"floral " + item.kind} style={s}>
-      <img src={item.src} alt="" aria-hidden="true" loading="eager" decoding="async"
+      <img src={resolveAsset(item.src)} alt="" aria-hidden="true" loading="eager" decoding="async"
         style={item.flip ? { transform: "scaleX(-1)" } : undefined} />
     </div>
   );
@@ -335,7 +323,14 @@ const PARAMS = typeof window !== "undefined" ? new URLSearchParams(window.locati
 const DEV = PARAMS.has("edit");
 const SEEK = PARAMS.has("t") ? Math.max(0, Math.min(DURATION, parseFloat(PARAMS.get("t")) || 0)) : null;
 
-export default function App() {
+export const VIDEO_IMAGES = [...new Set([
+  ...FLORALS.map((item) => item.src),
+  ...[COUPLE.p1, COUPLE.p2, COUPLE.p3, COUPLE.p4, COUPLE.p5],
+].filter(Boolean))];
+
+export default function App({ videoTime = null, resolveAsset = identityAsset }) {
+  const isVideo = videoTime != null;
+  const frameStyles = isVideo ? getTimelineStyles(videoTime) : {};
   const [cfg, setCfg] = useState({ bd: "", hand: "", ...COUPLE });
   const [panelOpen, setPanelOpen] = useState(false);
   // guest flow: hold on the enter screen until the visitor opens the invitation
@@ -359,63 +354,17 @@ export default function App() {
   useEffect(() => { playingRef.current = playing; }, [playing]);
 
   function render(t) {
-    const camS = keyed(t, [[0,1.00],[2.8,1.045],[4.3,1.02],[5.2,1.03],[8.0,1.022],[9.0,1.032],[11.4,1.022],[13.2,1.04],[14.5,1.062],[15.3,1.02],[16.9,1.03],[DURATION,1.10]]);
-    const camY = keyed(t, [[0,10],[4.3,0],[14.5,-6],[16.9,-10],[DURATION,-28]]);
-    if (R.cam.current) R.cam.current.style.transform = `translateY(${camY}px) scale(${camS})`;
-
-    const floatY = 6 * Math.sin(t * 0.55);
-    const spin = keyed(t, [[0,0],[15.3,0],[16.9,180],[DURATION,180]]);
-    if (R.album.current) R.album.current.style.transform = `translateY(${floatY}px) rotateY(${spin}deg)`;
-
-    let cover;
-    if (t < 2.8) cover = 0;
-    else if (t < 4.3) cover = lerp(0, -152, easeInOut(phase(t, 2.8, 4.3)));
-    else if (t < 13.2) cover = -152;
-    else if (t < 14.5) cover = lerp(-152, 0, easeInOut(phase(t, 13.2, 14.5)));
-    else cover = 0;
-    if (R.front.current) R.front.current.style.transform = `translateZ(14px) rotateY(${cover}deg)`;
-
-    const spreadOp = clamp(phase(t, 3.2, 4.4) - phase(t, 13.2, 14.5), 0, 1);
-    if (R.spread.current) { R.spread.current.style.opacity = spreadOp; }
-
-    // leaf A: Photo 1 -> transitional (flip 1)
-    const pa = easeInOut(phase(t, 6.2, 8.0));
-    const za = pa < 0.5 ? 120 : 60;
-    if (R.leafA.current) { R.leafA.current.style.transform = `rotateY(${lerp(0,-178,pa)}deg) translateZ(6px)`; R.leafA.current.style.zIndex = za; }
-    if (R.shadeA.current) R.shadeA.current.style.opacity = Math.sin(pa * Math.PI) * 0.9;
-
-    // leaf B: transitional -> Photo 2 (flip 2)
-    const pb = easeInOut(phase(t, 9.6, 11.4));
-    const zb = pb < 0.5 ? 110 : 70;
-    if (R.leafB.current) { R.leafB.current.style.transform = `rotateY(${lerp(0,-178,pb)}deg) translateZ(4px)`; R.leafB.current.style.zIndex = zb; }
-    if (R.shadeB.current) R.shadeB.current.style.opacity = Math.sin(pb * Math.PI) * 0.9;
-
-    const fl = 0.80 + 0.11*Math.sin(t*6.7) + 0.05*Math.sin(t*12.9+1.7) + 0.035*Math.sin(t*22.0);
-    if (R.candle.current) R.candle.current.style.opacity = clamp(fl, 0.58, 1);
-
-    const rev = (ref, a, b, rise) => {
-      if (!ref.current) return;
-      const p = easeInOut(phase(t, a, b));
-      ref.current.style.opacity = p;
-      ref.current.style.transform = `translateY(${lerp(rise, 0, p)}px)`;
-    };
-    rev(R.lbl, 16.2, 16.9, 14);
-    rev(R.rule, 16.5, 17.1, 10);
-    if (R.date.current) {
-      const dp = easeInOut(phase(t, 16.8, 17.8));
-      R.date.current.style.opacity = dp;
-      R.date.current.style.transform = `translateY(${lerp(18,0,dp)}px) scale(${lerp(.94,1,dp)})`;
+    for (const [key, style] of Object.entries(getTimelineStyles(t))) {
+      if (R[key].current) Object.assign(R[key].current.style, style);
     }
-    rev(R.place, 17.4, 18.0, 12);
-    if (R.sprig.current) R.sprig.current.style.opacity = easeInOut(phase(t, 17.8, 18.5)) * 0.6;
-    if (R.rsvp.current) R.rsvp.current.style.opacity = easeInOut(phase(t, 18.1, 18.7));
 
     if (R.scrub.current) R.scrub.current.value = t;
     if (R.time.current) R.time.current.textContent = `${t.toFixed(1)} / ${DURATION.toFixed(1)}s`;
   }
 
-  // animation loop
+  // The video receives an explicit time; only the website runs a live clock.
   useEffect(() => {
+    if (isVideo) return;
     let raf, last = null;
     const loop = (ts) => {
       if (last == null) last = ts;
@@ -436,6 +385,7 @@ export default function App() {
 
   // fit stage to viewport
   useEffect(() => {
+    if (isVideo) return;
     const fit = () => {
       const vp = R.viewport.current, st = R.stage.current;
       if (!vp || !st) return;
@@ -468,7 +418,7 @@ export default function App() {
     clearInterval(a._fade);
     a.currentTime = 0;
     a.volume = 0;
-    try { const p = a.play(); if (p !== undefined) p.then(() => fadeAudio(0.6, 1200)).catch(() => {}); } catch (_) {}
+    try { const p = a.play(); if (p !== undefined) p.then(() => fadeAudio(AUDIO_VOLUME, AUDIO_FADE_IN * 1000)).catch(() => {}); } catch (_) {}
   };
 
   const togglePlay = () => {
@@ -486,10 +436,10 @@ export default function App() {
     startAudio();
   };
 
-  // let the music linger ~3s on the end screen, then fade out and stop
+  // let the music linger ~5s on the end screen, then fade out and stop
   useEffect(() => {
     if (!ended) return;
-    const id = setTimeout(() => fadeAudio(0, 1500, true), 3000);
+    const id = setTimeout(() => fadeAudio(0, AUDIO_FADE_OUT * 1000, true), AUDIO_HOLD * 1000);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ended]);
@@ -508,21 +458,21 @@ export default function App() {
   const onScrub = (e) => { setPlaying(false); timeRef.current = parseFloat(e.target.value); render(timeRef.current); };
   const upd = (k) => (e) => setCfg((c) => ({ ...c, [k]: e.target.value }));
 
-  const photoStyle = (url) => (url ? { backgroundImage: `url("${url}")` } : {});
+  const photoStyle = (url) => (url ? { backgroundImage: `url("${resolveAsset(url)}")` } : {});
   const mono = initials(cfg.n1, cfg.n2);
   const namesFull = cfg.n1 && cfg.n2 ? `${cfg.n1.trim()}\n&\n${cfg.n2.trim()}` : null;
 
   return (
-    <div className="std-root">
+    <div className="std-root" style={isVideo ? { position: "absolute", height: "100%" } : undefined}>
       <style>{CSS}</style>
 
       <div className="std-viewport" ref={R.viewport}>
-        <div className="std-stage" ref={R.stage}>
-          <div className="std-cam" ref={R.cam}>
+        <div className="std-stage" ref={R.stage} style={isVideo ? { transform: "translate(-50%, -50%)" } : undefined}>
+          <div className="std-cam" ref={R.cam} style={frameStyles.cam}>
             <div className={"bd" + (cfg.bd ? " hasimg" : "")}>
               {cfg.bd && <div className="bd-photo" style={{ backgroundImage: `url("${cfg.bd}")` }} />}
             </div>
-            <div className="candle" ref={R.candle} />
+            <div className="candle" ref={R.candle} style={frameStyles.candle} />
             <div className="bokeh" style={{ width: 150, height: 150, top: 60, left: 70, background: "#D4BC8E", opacity: .45 }} />
             <div className="bokeh" style={{ width: 120, height: 120, top: 120, right: 90, background: "#C9A86C", opacity: .40 }} />
             <div className="bokeh" style={{ width: 180, height: 180, bottom: 120, left: 40, background: "#E8D9BB", opacity: .55 }} />
@@ -531,15 +481,15 @@ export default function App() {
 
             <div className="florals">
               {FLORALS.map((item, i) => (
-                <FloralPhoto key={i} item={item} />
+                <FloralPhoto key={i} item={item} videoTime={videoTime} resolveAsset={resolveAsset} />
               ))}
             </div>
 
             <div className="album-wrap">
-              <div className="album" ref={R.album}>
+              <div className="album" ref={R.album} style={frameStyles.album}>
                 <div className="body" />
 
-                <div className="spread" ref={R.spread} style={{ opacity: 0 }}>
+                <div className="spread" ref={R.spread} style={frameStyles.spread ?? { opacity: 0 }}>
                   {/* base left = inside-cover title / monogram (shown first) */}
                   <div className="pagebase left">
                     <div className="leafface">
@@ -559,7 +509,7 @@ export default function App() {
                   </div>
 
                   {/* leaf A: front Photo 1 -> back Photo 3 */}
-                  <div className="leaf" ref={R.leafA} style={{ zIndex: 120 }}>
+                  <div className="leaf" ref={R.leafA} style={frameStyles.leafA ?? { zIndex: 120 }}>
                     <div className="f front">
                       <div className="leafface">
                         <div className={"photo" + (cfg.p1 ? "" : " empty")} style={photoStyle(cfg.p1)}>
@@ -574,11 +524,11 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="shade" ref={R.shadeA} />
+                    <div className="shade" ref={R.shadeA} style={frameStyles.shadeA} />
                   </div>
 
                   {/* leaf B: front Photo 2 -> back Photo 4 */}
-                  <div className="leaf" ref={R.leafB} style={{ zIndex: 110 }}>
+                  <div className="leaf" ref={R.leafB} style={frameStyles.leafB ?? { zIndex: 110 }}>
                     <div className="f front">
                       <div className="leafface">
                         <div className={"photo" + (cfg.p2 ? "" : " empty")} style={photoStyle(cfg.p2)}>
@@ -593,7 +543,7 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="shade" ref={R.shadeB} />
+                    <div className="shade" ref={R.shadeB} style={frameStyles.shadeB} />
                   </div>
                 </div>
 
@@ -602,23 +552,23 @@ export default function App() {
                   <div className="std">
                     <Palm className="palm tl" size={220} />
                     <Palm className="palm br" size={240} />
-                    <div className="std-lbl" ref={R.lbl} style={{ opacity: 0 }}>SAVE THE DATE</div>
-                    <svg className="std-rule" ref={R.rule} width="18" height="16" viewBox="0 0 18 16" aria-hidden="true" style={{ opacity: 0 }}>
+                    <div className="std-lbl" ref={R.lbl} style={frameStyles.lbl ?? { opacity: 0 }}>SAVE THE DATE</div>
+                    <svg className="std-rule" ref={R.rule} width="18" height="16" viewBox="0 0 18 16" aria-hidden="true" style={frameStyles.rule ?? { opacity: 0 }}>
                       <path d="M9 14.8C9 14.8 0.5 9 0.5 4C0.5 1.8 2.3 0 4.5 0C6.1 0 7.5 0.9 9 2.8C10.5 0.9 11.9 0 13.5 0C15.7 0 17.5 1.8 17.5 4C17.5 9 9 14.8 9 14.8Z" fill="currentColor"/>
                     </svg>
-                    <div className="std-date" ref={R.date} style={{ opacity: 0 }}>27.07.27</div>
-                    <div className="std-place" ref={R.place} style={{ opacity: 0 }}>ANGUILLA</div>
-                    <svg className="std-sprig" ref={R.sprig} width="48" height="66" viewBox="0 0 100 115" aria-hidden="true" style={{ opacity: 0 }}>
+                    <div className="std-date" ref={R.date} style={frameStyles.date ?? { opacity: 0 }}>27.07.27</div>
+                    <div className="std-place" ref={R.place} style={frameStyles.place ?? { opacity: 0 }}>ANGUILLA</div>
+                    <svg className="std-sprig" ref={R.sprig} width="48" height="66" viewBox="0 0 100 115" aria-hidden="true" style={frameStyles.sprig ?? { opacity: 0 }}>
                       <path d={PALM_PATH} fill="currentColor"/>
                       <ellipse cx="50" cy="100" rx="32" ry="8" fill="currentColor" opacity="0.55"/>
                       <path d="M18 100 Q50 93 82 100" stroke="currentColor" strokeWidth="1.2" fill="none" opacity="0.35"/>
                     </svg>
-                    <div className="std-rsvp" ref={R.rsvp} style={{ opacity: 0 }}>RSVPs to follow</div>
+                    <div className="std-rsvp" ref={R.rsvp} style={frameStyles.rsvp ?? { opacity: 0 }}>Invitations to follow</div>
                   </div>
                 </div>
 
                 {/* front cover: OUR FOREVER (opens) */}
-                <div className="face cover front-cover" ref={R.front}>
+                <div className="face cover front-cover" ref={R.front} style={frameStyles.front}>
                   <div className="emboss">
                     <span className="ff-title">Our Forever</span>
                     <svg className="ff-heart" width="15" height="13" viewBox="0 0 18 16" aria-hidden="true">
@@ -635,8 +585,8 @@ export default function App() {
           <div className="vig" />
           {cfg.hand && <div className="hand"><img src={cfg.hand} alt="" /></div>}
 
-          {DEV && !panelOpen && <button className="atoggle" onClick={() => setPanelOpen(true)}>✎ assets</button>}
-          {DEV && panelOpen && (
+          {!isVideo && DEV && !panelOpen && <button className="atoggle" onClick={() => setPanelOpen(true)}>✎ assets</button>}
+          {!isVideo && DEV && panelOpen && (
             <div className="panel">
               <h3>Assets &amp; names</h3>
               <p>Paste public image URLs and names. Updates live.</p>
@@ -666,6 +616,7 @@ export default function App() {
         </div>
       </div>
 
+      {!isVideo && <>
       {/* soundtrack — starts on Open, fades out with the presentation (no loop) */}
       <audio ref={audioRef} src="/audio/way-you-look-tonight.mp3" preload="auto" playsInline />
 
@@ -692,7 +643,9 @@ export default function App() {
         Replay
       </button>
 
-      {DEV && (
+      </>}
+
+      {!isVideo && DEV && (
         <div className="controls">
           <button onClick={togglePlay}>{playing ? "Pause" : "Play"}</button>
           <button onClick={replay}>Replay</button>
