@@ -5,6 +5,20 @@ through your engagement photos, and reveals **SAVE THE DATE · 27.07.27 ·
 ANGUILLA**, over real red & pink rose photography, with a soft ambient piano
 track. Vertical 9:16, built for phones.
 
+## Guest playback
+
+The public page plays the finished HD film after the guest taps **Open**.
+It uses native inline video playback, sound controls, and replay, without mounting
+the live 3D album or decorative filter layers. If video playback fails, the final
+save-the-date image remains available with a direct video link.
+
+The published video and opening/final stills live in `public/media/invitation-v1*`.
+When replacing them, use a new versioned filename and update `MEDIA` in
+`src/GuestInvitation.jsx`: these files have long-lived immutable browser caching.
+Exporting a new Remotion video does not automatically replace the published film.
+The original live album remains available through `?edit` and `?t=SECONDS`, and
+continues to supply the Remotion export.
+
 ## Run locally
 
 ```bash
